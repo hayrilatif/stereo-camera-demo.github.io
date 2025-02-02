@@ -155,7 +155,7 @@
       const xLeft = parseFloat(xLeftMatch[0]);
       const xRight = parseFloat(xRightMatch[0]);
       
-      const imageWidth = document.getElementById('preview1').naturalWidth;
+      const imageWidth = document.getElementById('preview1').clientWidth;
       if (!imageWidth) {
         alert("Sol resim henüz yüklenmedi");
         return;
