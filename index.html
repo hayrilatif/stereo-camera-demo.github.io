@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stereo Derinlik Demo</title>
+  <style>
+    body {
+      font-family: Roboto, sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .input-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .image-container {
+      position: relative;
+      display: inline-block;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+    }
+    .image-container img {
+      max-width: 360px;
+      height: auto;
+      display: block;
+    }
+
+    .marker {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background-color: red;
+      border: 2px solid white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    #coordinates {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 18px;
+    }
+    #coordinates input, #coordinates button {
+      margin: 5px;
+      padding: 5px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Stereo Kamera Demo</h1>
+  
+  <div id="coordinates">
+    <p>İki fotoğraf seçin ve kamera bilgilerini girşn. Daha sonra uzaklığını bulmak istediğiniz objeye iki fotoğrafta da tıklayın. Ardından derinlik hesapla butonuna basın.</p>
+  </div>
+
+  <div class="input-container">
+    <input type="file" id="image1" accept="image/*" placeholder="Sol Resim Seç">
+    <input type="file" id="image2" accept="image/*" placeholder="Sağ Resim Seç">
+  </div>
+  
+  <div class="container">
+    <div class="image-container" id="container1">
+      <img id="preview1" src="" alt="Sol Resim Önizleme">
+    </div>
+    <div class="image-container" id="container2">
+      <img id="preview2" src="" alt="Sağ Resim Önizleme">
+    </div>
+  </div>
+
+  <div id="coordinates">
+    <p id="coord1">Sol Resim Koordinat X: ...</p>
+    <p id="coord2">Sağ Resim Koordinat X: ...</p>
+    
+    <input type="number" id="baseline" placeholder="Çekimler arasındaki mesafe (m)">
+    <input type="number" id="focDegree" placeholder="Kamera açısı (derece)">
+    <br>
+    <button id="calculate">Derinlik Hesapla</button>
+    <p id="depth">Derinlik (m): ...</p>
+  </div>
+
+  <script>
+    function readURL(input, previewId) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById(previewId).src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+    
+    document.getElementById('image1').addEventListener('change', function() {
+      readURL(this, 'preview1');
+    });
+    document.getElementById('image2').addEventListener('change', function() {
+      readURL(this, 'preview2');
+    });
+    
+    function addOrUpdateMarker(event, coordElementId) {
+      const x = event.offsetX;
+      const y = event.offsetY;
+      const container = event.currentTarget;
+      
+      let marker = container.querySelector('.marker');
+      if (!marker) {
+        marker = document.createElement('div');
+        marker.className = 'marker';
+        container.appendChild(marker);
+      }
+      marker.style.left = x + 'px';
+      marker.style.top = y + 'px';
+      
+      document.getElementById(coordElementId).textContent = 
+        (container.id === "container1" ? "Sol Resim" : "Sağ Resim") + " Koordinat X: " + x;
+    }
+    
+    document.getElementById('container1').addEventListener('click', function(event) {
+      addOrUpdateMarker(event, 'coord1');
+    });
+    document.getElementById('container2').addEventListener('click', function(event) {
+      addOrUpdateMarker(event, 'coord2');
+    });
+    
+    document.getElementById('calculate').addEventListener('click', function() {
+      const baseline = parseFloat(document.getElementById('baseline').value);
+      const fovDegrees = parseFloat(document.getElementById('focDegree').value);
+      
+      if (isNaN(baseline) || isNaN(fovDegrees) || baseline <= 0 || fovDegrees <= 0) {
+        alert("çekimler arası uzaklığı ve kamera acisii gir");
+        return;
+      }
+      
+      const coord1Text = document.getElementById('coord1').textContent;
+      const coord2Text = document.getElementById('coord2').textContent;
+      const xLeftMatch = coord1Text.match(/\d+/);
+      const xRightMatch = coord2Text.match(/\d+/);
+      
+      if (!xLeftMatch || !xRightMatch) {
+        alert("İki resme de tıklayarak koordinat seç");
+        return;
+      }
+      
+      const xLeft = parseFloat(xLeftMatch[0]);
+      const xRight = parseFloat(xRightMatch[0]);
+      
+      const imageWidth = document.getElementById('preview1').naturalWidth;
+      if (!imageWidth) {
+        alert("Sol resim henüz yüklenmedi");
+        return;
+      }
+      
+      const fovRadians = fovDegrees * Math.PI / 180;
+      
+      const effectiveFocal = (imageWidth / 2) / Math.tan(fovRadians / 2);
+      
+      const disparity = Math.abs(xLeft - xRight);
+      if (disparity === 0) {
+        alert("Disparity sıfır olamaz farklı koordinatlar seç");
+        return;
+      }
+      
+      const depth = (effectiveFocal * baseline) / disparity;
+      
+      document.getElementById('depth').textContent = `Derinlik: ${depth.toFixed(2)/10} m`;
+    });
+  </script>
+</body>
+</html>
